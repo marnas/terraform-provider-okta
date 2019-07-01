@@ -20,6 +20,12 @@ func resourceGroup() *schema.Resource {
 			State: schema.ImportStatePassthrough,
 		},
 		Schema: map[string]*schema.Schema{
+			"admin_roles": &schema.Schema{
+				Type:        schema.TypeSet,
+				Optional:    true,
+				Description: "Group Okta admin roles - ie. ['APP_ADMIN', 'USER_ADMIN']",
+				Elem:        &schema.Schema{Type: schema.TypeString},
+			},
 			"name": &schema.Schema{
 				Type:        schema.TypeString,
 				Required:    true,
@@ -51,6 +57,7 @@ func buildGroup(d *schema.ResourceData) *okta.Group {
 
 func resourceGroupCreate(d *schema.ResourceData, m interface{}) error {
 	group := buildGroup(d)
+	client := getSupplementFromMetadata(m)
 	responseGroup, _, err := getOktaClientFromMetadata(m).Group.CreateGroup(*group)
 	if err != nil {
 		return err
@@ -59,6 +66,14 @@ func resourceGroupCreate(d *schema.ResourceData, m interface{}) error {
 	d.SetId(responseGroup.Id)
 	if err := updateGroupUsers(d, m); err != nil {
 		return err
+	}
+
+	// role assigning can only happen after the user is created so order matters here
+	roles := convertInterfaceToStringSetNullable(d.Get("admin_roles"))
+	if roles != nil {
+		if err = assignAdminRolesToGroup(responseGroup.Id, roles, client); err != nil {
+			return err
+		}
 	}
 
 	return resourceGroupRead(d, m)
@@ -87,6 +102,7 @@ func resourceGroupRead(d *schema.ResourceData, m interface{}) error {
 
 func resourceGroupUpdate(d *schema.ResourceData, m interface{}) error {
 	group := buildGroup(d)
+	client := getSupplementFromMetadata(m)
 	_, _, err := getOktaClientFromMetadata(m).Group.UpdateGroup(d.Id(), *group)
 	if err != nil {
 		return err
@@ -94,6 +110,14 @@ func resourceGroupUpdate(d *schema.ResourceData, m interface{}) error {
 
 	if err := updateGroupUsers(d, m); err != nil {
 		return err
+	}
+
+	if d.HasChange("admin_roles") {
+		roles := convertInterfaceToStringSet(d.Get("admin_roles"))
+		if err := updateAdminRolesOnGroup(d.Id(), roles, client); err != nil {
+			return err
+		}
+		d.SetPartial("admin_roles")
 	}
 
 	return resourceGroupRead(d, m)
