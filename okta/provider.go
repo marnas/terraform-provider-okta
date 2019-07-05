@@ -12,6 +12,7 @@ import (
 
 // Resource names, defined in place, used throughout the provider and tests
 const (
+	oktaAdminRoles         = "okta_admin_roles"
 	appAutoLogin           = "okta_app_auto_login"
 	appBookmark            = "okta_app_bookmark"
 	appOAuth               = "okta_app_oauth"
@@ -107,6 +108,7 @@ func Provider() terraform.ResourceProvider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
+			oktaAdminRoles:         resourceAdminRoles(),
 			appAutoLogin:           resourceAppAutoLogin(),
 			appBookmark:            resourceAppBookmark(),
 			appOAuth:               resourceAppOAuth(),

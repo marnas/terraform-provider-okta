@@ -71,7 +71,7 @@ func resourceGroupCreate(d *schema.ResourceData, m interface{}) error {
 	// role assigning can only happen after the user is created so order matters here
 	roles := convertInterfaceToStringSetNullable(d.Get("admin_roles"))
 	if roles != nil {
-		if err = assignAdminRolesToGroup(responseGroup.Id, roles, client); err != nil {
+		if err = assignAdminRolesToGroup("groups", responseGroup.Id, roles, client); err != nil {
 			return err
 		}
 	}
@@ -114,7 +114,7 @@ func resourceGroupUpdate(d *schema.ResourceData, m interface{}) error {
 
 	if d.HasChange("admin_roles") {
 		roles := convertInterfaceToStringSet(d.Get("admin_roles"))
-		if err := updateAdminRolesOnGroup(d.Id(), roles, client); err != nil {
+		if err := updateAdminRoles("groups", d.Id(), roles, client); err != nil {
 			return err
 		}
 		d.SetPartial("admin_roles")
